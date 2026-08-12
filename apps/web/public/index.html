@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Slovakia Visa Slot Alert</title>
+  <meta name="description" content="Instant monitoring for Slovakia D-category long-term study visa appointments in Delhi." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇸🇰</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <div class="badge">🇸🇰 Slovakia · India</div>
+      <h1>Slovakia Visa Slot Alert</h1>
+      <p class="subtitle">Instant monitoring for Slovakia D-category long-term study visa appointments in Delhi.</p>
+      <div class="target-cards">
+        <div class="card"><span class="card-icon">🇸🇰</span><span>Slovakia</span></div>
+        <div class="card"><span class="card-icon">📍</span><span>Delhi</span></div>
+        <div class="card"><span class="card-icon">🛂</span><span>D Category</span></div>
+        <div class="card"><span class="card-icon">📚</span><span>Study</span></div>
+        <div class="card"><span class="card-icon">⏳</span><span>Long Term</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel" id="system-status">
+      <h2>System Status</h2>
+      <div class="status-row">
+        <span id="online-indicator" class="indicator offline">🔴 Monitor Offline</span>
+        <span id="last-heartbeat" class="muted"></span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="panel">
+        <h2>BLS</h2>
+        <dl class="kv" id="bls-kv">
+          <dt>Last checked</dt><dd data-field="lastChecked">—</dd>
+          <dt>Current status</dt><dd data-field="status">—</dd>
+          <dt>Response time</dt><dd data-field="responseTimeMs">—</dd>
+          <dt>Paused</dt><dd data-field="paused">—</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2>VFS</h2>
+        <dl class="kv" id="vfs-kv">
+          <dt>Last checked</dt><dd data-field="lastChecked">—</dd>
+          <dt>Current status</dt><dd data-field="status">—</dd>
+          <dt>Response time</dt><dd data-field="responseTimeMs">—</dd>
+          <dt>Paused</dt><dd data-field="paused">—</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="panel">
+        <h2>Target</h2>
+        <dl class="kv">
+          <dt>Region</dt><dd id="target-region">Delhi</dd>
+          <dt>Category</dt><dd id="target-category">D</dd>
+          <dt>Visa Type</dt><dd id="target-visaType">Long Term</dd>
+          <dt>Purpose</dt><dd id="target-purpose">Study</dd>
+          <dt>Check interval</dt><dd id="target-interval">—</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2>Last Available Slot</h2>
+        <dl class="kv" id="last-slot-kv">
+          <dt>Provider</dt><dd data-field="provider">None detected yet</dd>
+          <dt>Date</dt><dd data-field="slotDate">—</dd>
+          <dt>Time</dt><dd data-field="slotTime">—</dd>
+          <dt>Detected</dt><dd data-field="firstSeenAt">—</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Checks</h2>
+      <div class="table-wrap">
+        <table id="recent-checks">
+          <thead>
+            <tr><th>Time</th><th>Provider</th><th>Status</th><th>Response Time</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="footnote">
+      This dashboard only ever monitors and notifies — it never books appointments automatically,
+      solves CAPTCHAs, or bypasses site protections. All times shown are Asia/Kolkata (India).
+    </p>
+  </main>
+
+  <footer class="container footer">
+    <span>Slovakia Visa Slot Alert</span>
+    <span class="muted">Notification bot — you always book manually.</span>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

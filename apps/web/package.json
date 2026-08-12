@@ -1,0 +1,10 @@
+{
+  "name": "@slovakia-visa-alert/web",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npx serve public -l 3000",
+    "build": "node -e \"console.log('static site — nothing to build')\"",
+    "start": "npx serve public -l 3000"
+  }
+}

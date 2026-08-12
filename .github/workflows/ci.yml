@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Fallback-only health ping, NOT the real-time monitor — see the
+    # fallback-health-check job below.
+    - cron: "*/15 * * * *"
+
+jobs:
+  build-and-test:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install --workspaces --include-workspace-root
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/monitor
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  # Low-frequency fallback health check only — NOT the real-time monitor.
+  # Requirement #4/#28: real-time polling must run on a persistent backend,
+  # never on GitHub Actions cron. This job only pings a deployed instance's
+  # /health endpoint every 15 minutes to catch a fully-down deployment.
+  fallback-health-check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping deployed monitor health endpoint
+        run: |
+          if [ -z "${{ secrets.MONITOR_HEALTH_URL }}" ]; then
+            echo "MONITOR_HEALTH_URL secret not set — skipping fallback health check."
+            exit 0
+          fi
+          curl -fsS "${{ secrets.MONITOR_HEALTH_URL }}" || (echo "Monitor health check failed" && exit 1)

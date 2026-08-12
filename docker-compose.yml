@@ -1,0 +1,25 @@
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: slovakia-visa-alert-monitor:latest
+    container_name: slovakia-visa-alert-monitor
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3001:3001"
+    volumes:
+      # Persist DB + Playwright auth state + debug screenshots across
+      # restarts/deploys. These directories are git-ignored on purpose.
+      - ./data:/app/data
+      - ./storage:/app/storage
+      - ./debug:/app/debug
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    shm_size: "1gb"

@@ -1,0 +1,50 @@
+import { EmailNotifier } from "./email.js";
+import type { SlotAlertPayload, SystemAlertPayload } from "../types.js";
+import { env } from "../config/env.js";
+import type { VisaAlertDatabase } from "../database/db.js";
+
+export interface DispatchResult {
+  emailOk: boolean;
+  internalNotificationLatencyMs: number;
+}
+
+/**
+ * Fast-path dispatcher — requirement #34. Email is the sole notification
+ * channel (Telegram was removed at the user's request) and fires
+ * immediately on a confirmed slot, ahead of any secondary bookkeeping.
+ */
+export class NotificationDispatcher {
+  email = new EmailNotifier();
+
+  constructor(private db: VisaAlertDatabase) {}
+
+  async dispatchConfirmedSlot(payload: SlotAlertPayload, slotId: number): Promise<DispatchResult> {
+    const notificationStartedAt = Date.now();
+
+    const emailOk = await this.email.sendSlotAlert(payload);
+    const notificationSentAt = Date.now();
+    const internalNotificationLatencyMs = notificationSentAt - notificationStartedAt;
+
+    if (env.debugMonitor) {
+      // eslint-disable-next-line no-console
+      console.log(`[dispatch] internalNotificationLatencyMs=${internalNotificationLatencyMs}`);
+    }
+
+    this.db.recordAlert(slotId, "email", new Date(notificationSentAt).toISOString(), emailOk, undefined, internalNotificationLatencyMs);
+
+    return { emailOk, internalNotificationLatencyMs };
+  }
+
+  async dispatchPossibleSlot(payload: SlotAlertPayload): Promise<void> {
+    await this.email.sendPossibleSlotAlert(payload);
+  }
+
+  async dispatchSlotClosed(payload: SlotAlertPayload): Promise<void> {
+    await this.email.sendSlotClosedAlert(payload);
+  }
+
+  async dispatchSystemAlert(payload: SystemAlertPayload): Promise<void> {
+    await this.email.sendSystemAlert(payload);
+    this.db.recordSystemEvent(payload.severity, payload.message);
+  }
+}

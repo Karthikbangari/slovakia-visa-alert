@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+apps/*/node_modules/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# playwright auth state / sessions — NEVER commit these
+storage/
+apps/monitor/storage/
+*.storageState.json
+
+# database
+data/
+apps/monitor/data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# debug artifacts (screenshots, inspection reports may contain page content)
+debug/
+apps/monitor/debug/
+
+# build output
+dist/
+apps/*/dist/
+build/
+.next/
+out/
+
+# logs
+*.log
+npm-debug.log*
+
+# playwright
+playwright-report/
+test-results/
+blob-report/
+
+# OS
+.DS_Store
+
+# editor
+.vscode/
+.idea/

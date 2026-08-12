@@ -1,0 +1,13 @@
+{
+  "verified": false,
+  "note": "PARTIALLY CONFIRMED via `npm run inspect:vfs` against the live site (unauthenticated) on 2026-08-12: application-detail is an Angular single-page app — a screenshot taken at domcontentloaded shows only a loading spinner (see debug/vfs-*.png), no <select> or button elements exist until the app finishes bootstrapping. The provider now waits for networkidle (bounded, 8s) after navigation to give it time to render. One inspection run also received an HTTP 403 with a JSON body ({code, description}) directly on the document request — consistent with bot-protection/WAF that intermittently blocks headless/unauthenticated requests; the provider already treats 403 as RATE_LIMITED and backs off hard rather than retrying aggressively or attempting to bypass it. Still NOT verified: the real VAC/category/visaType/purpose form-control names and calendar markup below are still placeholders since no run has gotten past the loading state to see rendered form content — re-run `npm run inspect:vfs` (possibly multiple times, since the WAF response seems inconsistent) until you get real <select> data, or capture it manually by opening the URL in a normal browser and viewing page source / devtools, then update this file and set verified=true.",
+  "loginUrlContains": "login",
+  "knownBotProtection": "Returns HTTP 403 with JSON {code, description} body on some requests — treat as RATE_LIMITED, never bypass.",
+  "centreSelect": "select[formcontrolname*='centre' i], select[name*='centre' i]",
+  "categorySelect": "select[formcontrolname*='category' i], select[name*='category' i]",
+  "visaTypeSelect": "select[formcontrolname*='visaType' i], select[formcontrolname*='subCategory' i]",
+  "purposeSelect": "select[formcontrolname*='purpose' i]",
+  "bookNowButton": "button:has-text('Book'), a:has-text('Book Appointment')",
+  "noSlotText": ["no appointment slots", "no slots available", "not available currently"],
+  "calendarContainer": ".calendar, [data-testid='calendar'], mat-calendar"
+}

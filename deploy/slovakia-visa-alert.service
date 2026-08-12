@@ -1,0 +1,35 @@
+# systemd unit for running the monitor without Docker on a plain Ubuntu VPS.
+# See README section "VPS deployment (systemd, no Docker)" for setup steps.
+#
+# Install:
+#   sudo cp deploy/slovakia-visa-alert.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now slovakia-visa-alert
+#
+# Logs:
+#   journalctl -u slovakia-visa-alert -f
+
+[Unit]
+Description=Slovakia Visa Slot Alert Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Change these two paths to match your actual deployment location/user.
+User=visaalert
+WorkingDirectory=/home/visaalert/slovakia-visa-alert
+ExecStart=/usr/bin/node apps/monitor/dist/src/index.js
+EnvironmentFile=/home/visaalert/slovakia-visa-alert/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening (adjust ReadWritePaths if you move data/storage/debug elsewhere)
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/visaalert/slovakia-visa-alert/data /home/visaalert/slovakia-visa-alert/storage /home/visaalert/slovakia-visa-alert/debug
+
+[Install]
+WantedBy=multi-user.target

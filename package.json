@@ -1,0 +1,36 @@
+{
+  "name": "slovakia-visa-alert",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Monitors Slovakia D-category Long Term Study visa appointment availability (Delhi only) on BLS and VFS, and sends instant email notifications. Does not auto-book and does not bypass CAPTCHA or bot protection.",
+  "type": "module",
+  "workspaces": [
+    "apps/monitor",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/monitor",
+    "build": "npm run build -w apps/monitor",
+    "start": "npm run start -w apps/monitor",
+    "lint": "npm run lint -w apps/monitor",
+    "typecheck": "npm run typecheck -w apps/monitor",
+    "test": "npm run test -w apps/monitor",
+    "auth:bls": "npm run auth:bls -w apps/monitor",
+    "inspect:bls": "npm run inspect:bls -w apps/monitor",
+    "inspect:vfs": "npm run inspect:vfs -w apps/monitor",
+    "check:bls": "npm run check:bls -w apps/monitor",
+    "check:vfs": "npm run check:vfs -w apps/monitor",
+    "check:all": "npm run check:all -w apps/monitor",
+    "alert:test": "npm run alert:test -w apps/monitor",
+    "mock:no-slot": "npm run mock:no-slot -w apps/monitor",
+    "mock:slot": "npm run mock:slot -w apps/monitor",
+    "diagnostics": "npm run diagnostics -w apps/monitor"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "UNLICENSED"
+}
