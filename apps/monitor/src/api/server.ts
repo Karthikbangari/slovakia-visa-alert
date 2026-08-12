@@ -75,6 +75,10 @@ export function buildApiServer(monitor: MonitorService) {
     return { slot: monitor.getDb().lastActiveSlot() ?? null };
   });
 
+  app.get("/api/notifications", async () => {
+    return { online: isHeartbeatFresh(), ...monitor.getDb().notificationStats() };
+  });
+
   app.get("/api/stats", async () => {
     const since = new Date();
     since.setHours(0, 0, 0, 0);

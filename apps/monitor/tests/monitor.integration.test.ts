@@ -85,6 +85,25 @@ describe("MonitorService integration — dedup + state persistence (requirement 
     // First check sends email successfully (1 row); the next two checks see
     // the same slot within the cooldown window and are skipped.
     expect(alertRow.c).toBe(1);
+
+    const stats = db.notificationStats();
+    expect(stats.totalSent).toBe(1);
+    expect(stats.lastSentAt).not.toBeNull();
+  });
+
+  it("notificationStats never counts failed sends", async () => {
+    db = new VisaAlertDatabase(tmpDbPath());
+    const provider = new MockProvider("BLS", "slot");
+    const monitor = new MonitorService([provider], db);
+
+    // @ts-expect-error accessing private for a direct, timer-free check
+    await monitor.handleResult("BLS", await provider.checkAvailability());
+
+    // Email is unconfigured in tests, so the send fails — the count must
+    // stay at zero rather than reporting a notification that never arrived.
+    const stats = db.notificationStats();
+    expect(stats.totalSent).toBe(0);
+    expect(stats.lastSentAt).toBeNull();
   });
 
   it("without a configured channel, failed sends are retried on every check (no false cooldown)", async () => {

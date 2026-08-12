@@ -187,6 +187,28 @@ export class VisaAlertDatabase {
       .get() as Record<string, unknown> | undefined;
   }
 
+  /**
+   * All-time count of notifications the bot has actually sent successfully
+   * (i.e. slot alerts that reached email), plus when the last one went out.
+   * This is the "how many notifications has the bot sent" figure — counts
+   * only the confirmed-slot alert channel, not possible-slot/system emails.
+   */
+  notificationStats(): { totalSent: number; lastSentAt: string | null } {
+    const totalSent = (
+      this.db
+        .prepare(`SELECT COUNT(*) as c FROM alerts WHERE channel = 'email' AND successful = 1 AND slot_id IS NOT NULL`)
+        .get() as { c: number }
+    ).c;
+    const lastSentAt = (
+      this.db
+        .prepare(
+          `SELECT sent_at as sentAt FROM alerts WHERE channel = 'email' AND successful = 1 AND slot_id IS NOT NULL ORDER BY sent_at DESC LIMIT 1`,
+        )
+        .get() as { sentAt: string } | undefined
+    )?.sentAt ?? null;
+    return { totalSent, lastSentAt };
+  }
+
   stats(sinceIso: string): { totalChecks: number; successfulChecks: number; failedChecks: number; slotsDetected: number } {
     const totalChecks = (
       this.db.prepare(`SELECT COUNT(*) as c FROM monitor_checks WHERE checked_at >= ?`).get(sinceIso) as { c: number }
