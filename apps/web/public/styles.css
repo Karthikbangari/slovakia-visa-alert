@@ -67,6 +67,12 @@ h1 {
   line-height: 1;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
+  transition: color 0.2s ease;
+}
+
+.count.count-muted {
+  color: var(--muted);
+  opacity: 0.5;
 }
 
 .count-label {

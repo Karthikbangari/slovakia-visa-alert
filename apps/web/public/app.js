@@ -22,13 +22,15 @@ async function refresh() {
     const data = await res.json();
 
     countEl.textContent = data.totalSent;
+    countEl.classList.toggle("count-muted", !data.online);
     lastSentEl.textContent = `Last sent: ${data.lastSentAt ? `${fmtKolkata(data.lastSentAt)} IST` : "never yet"}`;
 
     dotEl.className = data.online ? "dot-online" : "dot-offline";
     textEl.textContent = data.online ? "bot is running" : "bot is offline";
   } catch (err) {
-    countEl.textContent = "—";
-    lastSentEl.textContent = "Last sent: —";
+    countEl.textContent = "0";
+    countEl.classList.add("count-muted");
+    lastSentEl.textContent = "Last sent: never yet";
     dotEl.className = "dot-offline";
     textEl.textContent = "bot is offline (can't reach it)";
     console.error(err);
