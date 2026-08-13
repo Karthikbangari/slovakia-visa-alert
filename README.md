@@ -5,6 +5,18 @@ Long Term, Study visa appointments in Delhi** and emails you the instant one
 opens. **It never books anything for you, never solves CAPTCHAs, and never
 bypasses bot protection.** Check → detect → notify → you book manually.
 
+> **⚠️ Known limitation, confirmed live 2026-08-13**: neither provider's
+> real slot data for this visa category is currently reachable by
+> automation, by their own design — see §22 for the full findings. **VFS**
+> has no self-service calendar at all for Long Stay/National (D-category)
+> visas; it's a manual "contact us" process. **BLS**'s calendar sits behind
+> a CAPTCHA+OTP gate that reappears on every single booking attempt, not
+> just once at login. Right now this bot's honest, working job is a
+> **session/health monitor** — it confirms BLS's login stays valid and
+> both sites stay reachable, and emails you the moment that changes. It
+> will not — and structurally cannot — autonomously detect an open slot
+> for this category unless one of the providers changes their process.
+
 ---
 
 ## 1. What this project does
@@ -380,9 +392,9 @@ periodically if you care about historical stats — both are plain files, so
 a simple `rsync`/`scp`/nightly `cp` to another host is enough. Never back
 these up to a public location; `storage/` contains session cookies.
 
-## 22. Selector verification (external-site validation still needed)
+## 22. Live findings from both providers
 
-### VFS — important finding, confirmed live on 2026-08-12
+### VFS — confirmed live on 2026-08-12
 
 VFS Global's own "Book an appointment" page for Slovakia/India
 (`https://visa.vfsglobal.com/ind/en/svk/book-an-appointment`, now the
@@ -408,35 +420,35 @@ VFS emailed you after contacting them, or you know their process has
 changed — update `VFS_URL` in `.env` and re-run `npm run inspect:vfs` to
 capture its real structure, then follow the steps below to verify it.
 
-### BLS — the one piece that still needs your hands-on login
+### BLS — confirmed live on 2026-08-13, with a real logged-in session
 
 BLS is a separate appointment portal from VFS and **is** a real,
-account-gated appointment system (confirmed via `npm run inspect:bls`:
-its login page loads hCaptcha and uses randomized/obfuscated form field
-names — a real login flow, not a static contact page). Its authenticated
-appointment page (VAC/category/visa-type/purpose selects + calendar) is
-the one thing that genuinely cannot be inspected without you logging in
-by hand (including CAPTCHA/OTP, which this project deliberately never
-automates). The infrastructure to detect availability with high confidence
-is fully built (network-response capture + DOM fallback + CAPTCHA/
-maintenance/session detection + selector-change screenshots); until it has
-seen the real, logged-in appointment page it will correctly report
-`UNKNOWN`/`SELECTORS_UNVERIFIED` rather than guess — see requirement "never
-fake a working detector" and `apps/monitor/tests/mockProvider.test.ts` for
-what a *verified* result should look like.
+account-gated system (its login page loads hCaptcha and uses randomized/
+obfuscated form field names — a genuine anti-automation login flow). Login
+via `npm run auth:bls` works correctly and the saved session stays valid
+across checks.
 
-To finish it:
+But the actual date/slot calendar is one click further than the
+authenticated landing page: clicking "Book appointment" for an applicant
+leads to an "Appointment Booking Form" that requires solving a
+distorted-digit image CAPTCHA **plus** a mobile OTP before you can
+continue — and this check reappears on **every single booking attempt**,
+not once at login. There is no selector work that fixes this; the
+calendar itself is unreachable by automation, by BLS's design.
 
-```bash
-npm run auth:bls          # log in once, manually, including CAPTCHA/OTP
-npm run inspect:bls       # generates debug/bls-inspection-*.json
-```
+`BLSProvider` reflects this honestly: once authenticated with no
+challenge on the landing page, it reports `MANUAL_PROCESS_ONLY` (session
+healthy, but slot data is unreachable) rather than pretending to see a
+calendar it never reached. It still correctly detects and pauses on
+`SESSION_EXPIRED`, `HUMAN_ACTION_REQUIRED` (login-time CAPTCHA), and
+`MAINTENANCE`/`RATE_LIMITED` — so you'll always know if the login itself
+needs attention. See `apps/monitor/src/providers/bls.ts` and
+`src/providers/selectors/bls.selectors.json` for the full writeup.
 
-Then open the generated report, and edit
-`apps/monitor/src/providers/selectors/bls.selectors.json` with the real
-`<select>` names/options and calendar/availability markup you see, and set
-`"verified": true`. Re-run `npm run check:bls` to confirm it now classifies
-NO_SLOT vs SLOT_AVAILABLE correctly against the live site.
+If BLS ever removes or changes this per-attempt verification step (or you
+find a different, non-tokenized way to reach the calendar), re-run
+`npm run inspect:bls` and revisit `bls.ts` — the inspection tooling and
+`npm run check:bls` are still there and working.
 
 ## 23. Disclaimer
 

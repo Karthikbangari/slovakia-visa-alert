@@ -5,34 +5,34 @@ import { env } from "../config/env.js";
 import { TARGET } from "../config/target.js";
 import type { AvailabilityResult, ProviderAdapter } from "../types.js";
 import { sessionManager, storageStatePath } from "../browser/sessionManager.js";
-import {
-  captureAvailabilityResponses,
-  detectChallenge,
-  loadSelectorConfig,
-  pageFingerprint,
-  saveDebugScreenshot,
-} from "./common.js";
+import { captureAvailabilityResponses, detectChallenge, loadSelectorConfig, saveDebugScreenshot } from "./common.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const selectors = loadSelectorConfig(path.join(__dirname, "selectors", "bls.selectors.json"), {
-  verified: false,
-  dashboardUrlContains: "app_india",
   loginUrlContains: "login",
-  noSlotText: ["no appointment", "no slots available"],
 });
 
 /**
  * BLS Slovakia (India) provider.
  *
- * STATUS: infrastructure complete; live selectors NOT YET VERIFIED.
- * BLS requires an authenticated session (login + CAPTCHA/OTP), which this
- * bot deliberately does not automate — see requirement #3/#7. Run
- * `npm run auth:bls` once to create storage/bls-state.json, then
- * `npm run inspect:bls` to generate a selector report and fill in
- * src/providers/selectors/bls.selectors.json with real values from your
- * account's appointment page. Until that file has "verified": true, this
- * adapter will only ever return confidence UNKNOWN/LIKELY, never CONFIRMED,
- * so it can never produce a false-positive slot alert.
+ * STATUS: confirmed live 2026-08-13 — real slot data is unreachable by
+ * design, not just unverified. Login works fine (see `npm run auth:bls`),
+ * and the authenticated applicant-list page loads normally. But BLS's
+ * actual booking form (reached via "Book appointment" for an applicant)
+ * requires solving a distorted-digit CAPTCHA image plus a mobile OTP —
+ * and this isn't a one-time login gate, it reappears on every single
+ * booking attempt. There is no way to view the date/slot calendar without
+ * a human passing that check at that exact moment, which this project
+ * deliberately never automates (see requirement #3/#45 — never fake a
+ * working detector, never bypass CAPTCHA).
+ *
+ * So this adapter's honest job is a session/health monitor: confirm the
+ * saved login still works and the site is reachable, and alert you the
+ * moment that stops being true (session expired, CAPTCHA/rate-limit/
+ * maintenance hit). It will never — and structurally cannot — report a
+ * confirmed open slot. If BLS ever changes this flow (e.g. adds a
+ * self-service calendar that doesn't require per-attempt verification),
+ * re-run `npm run inspect:bls` and revisit this file.
  */
 export class BLSProvider implements ProviderAdapter {
   name = "BLS" as const;
@@ -97,54 +97,22 @@ export class BLSProvider implements ProviderAdapter {
         });
       }
 
-      // Prefer network/API observation (requirement #6). If the account's
-      // real appointment flow issues an availability API call, it will be
-      // captured here. We do not yet know BLS's real endpoint shape, so we
-      // only use this if a captured payload also structurally matches our
-      // exact target after inspection tooling confirms the field names.
+      // Kept for completeness / in case BLS changes its flow, but nothing
+      // has ever been observed here in practice — see the class doc above.
       if (responses.length > 0 && env.debugMonitor) {
         // eslint-disable-next-line no-console
         console.log(`[bls] captured ${responses.length} availability-shaped JSON response(s) — inspect with npm run inspect:bls`);
       }
 
-      if (!selectors.verified) {
-        const html = await page.content();
-        await saveDebugScreenshot(page, "bls");
-        return this.result(base, startedAt, {
-          state: "UNKNOWN",
-          confidence: "UNKNOWN",
-          rawStatus:
-            "BLS selectors are not yet verified against the live site. Run `npm run inspect:bls` and update src/providers/selectors/bls.selectors.json before this adapter can classify availability.",
-          errorType: "SELECTORS_UNVERIFIED",
-          pageFingerprint: pageFingerprint(html),
-        });
-      }
-
-      // --- DOM fallback detector (only reachable once selectors.verified === true) ---
-      const bodyText = (await page.locator("body").innerText().catch(() => "")).toLowerCase();
-      const noSlot = (selectors.noSlotText as string[]).some((t) => bodyText.includes(t.toLowerCase()));
-
-      if (noSlot) {
-        return this.result(base, startedAt, {
-          region: TARGET.region,
-          category: TARGET.category,
-          visaType: TARGET.visaType,
-          purpose: TARGET.purpose,
-          state: "NO_SLOT",
-          confidence: "CONFIRMED",
-          rawStatus: "No-slot text matched on BLS appointment page",
-          matchingCriteria: false,
-        });
-      }
-
-      // A verified DOM implementation would read selected filter values and
-      // the calendar's available-date cells here. Without a confirmed
-      // selector map this branch is intentionally left as LIKELY/UNKNOWN
-      // rather than guessing CONFIRMED — see requirement #45.
+      // Reaching here means: authenticated, no CAPTCHA/maintenance/login-
+      // redirect on the landing page — i.e. the session is healthy. That's
+      // the most this adapter can honestly confirm; see class doc for why.
       return this.result(base, startedAt, {
-        state: "POSSIBLE_SLOT",
-        confidence: "LIKELY",
-        rawStatus: "Page did not match known 'no slot' text — verify manually before booking",
+        state: "MANUAL_PROCESS_ONLY",
+        confidence: "UNKNOWN",
+        available: false,
+        rawStatus:
+          "BLS session is valid and the site is reachable, but the actual date/slot calendar sits behind a CAPTCHA+OTP gate that reappears on every booking attempt (confirmed live 2026-08-13) — not something this bot will automate past. Check BLS manually to see real availability.",
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

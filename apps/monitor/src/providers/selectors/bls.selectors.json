@@ -1,14 +1,4 @@
 {
-  "verified": false,
-  "note": "PARTIALLY CONFIRMED via `npm run inspect:bls` against the live login page (unauthenticated) on 2026-08-12: page title 'Slovakia | Login', loginUrlContains='login' is correct (URL stays at .../app_india/login), and the login form uses hCaptcha (js.hcaptcha.com / hcaptcha.com/1/api.js loaded on page) plus an obfuscated/randomized field name for the email input — confirms login cannot and should not be automated. Still NOT verified: the authenticated appointment page's VAC/category/visaType/purpose selects and calendar markup below are still placeholders — run `npm run auth:bls` (manual login) then `npm run inspect:bls` again to capture the real authenticated page structure, then set verified=true.",
-  "dashboardUrlContains": "app_india",
   "loginUrlContains": "login",
-  "captchaVendor": "hcaptcha",
-  "vacSelect": "select[name*='centre'], select[name*='vac'], #ddlCentre",
-  "categorySelect": "select[name*='category'], #ddlCategory",
-  "visaTypeSelect": "select[name*='visaType'], select[name*='type'], #ddlVisaType",
-  "purposeSelect": "select[name*='purpose'], #ddlPurpose",
-  "availableDateCell": ".available-date, .slot-available, td.available, [data-available='true']",
-  "noSlotText": ["no appointment", "no slots available", "not available", "no dates available"],
-  "calendarContainer": ".calendar, #appointmentCalendar, [data-testid='calendar']"
+  "note": "CONFIRMED live 2026-08-13 with a real authenticated session: BLS's actual date/slot calendar is reached via 'Book appointment' on the authenticated applicant-list page (list-appointment-form-india), which leads to an 'Appointment Booking Form' requiring a distorted-digit image CAPTCHA plus a mobile OTP before you can click Continue. This gate reappears on every booking attempt, not just once at login. There is no selector work that fixes this — the calendar itself is unreachable by automation. src/providers/bls.ts therefore treats a healthy authenticated session as the most it can honestly report (MANUAL_PROCESS_ONLY), and does not attempt to click through to this form. If BLS ever removes or changes this gate, re-run `npm run inspect:bls` (optionally extended to follow the 'Book appointment' link) and revisit bls.ts."
 }

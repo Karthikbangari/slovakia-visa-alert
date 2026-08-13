@@ -34,9 +34,11 @@ async function main() {
     for (const n of report.notes) console.log(`  - ${n}`);
   }
 
-  console.log("\nNext step: open the saved JSON report in debug/, then update");
-  console.log("src/providers/selectors/bls.selectors.json with the real select/field");
-  console.log('names you see above, and set "verified": true.');
+  console.log("\nNote: this only inspects the authenticated landing page (applicant list).");
+  console.log("The real date/slot calendar is one click further, behind 'Book appointment',");
+  console.log("which requires a fresh CAPTCHA + OTP on every attempt — confirmed live");
+  console.log("2026-08-13, see src/providers/selectors/bls.selectors.json and bls.ts for");
+  console.log("why this bot does not attempt to click through to it.");
 }
 
 main().catch((err) => {
