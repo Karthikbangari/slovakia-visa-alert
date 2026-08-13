@@ -172,9 +172,15 @@ the official `mcr.microsoft.com/playwright` base image, exposes `:3001`, and
 has a healthcheck against `/health`. `data/`, `storage/`, and `debug/` are
 bind-mounted so your BLS session and history survive rebuilds.
 
-## 11. Fly.io deployment (this project's live instance)
+## 11. Fly.io deployment (stopped — needs a payment method)
 
-The project's actual running instance lives here, deployed via `flyctl`:
+Fully configured and ready to run, but currently **stopped**: Fly.io only
+runs a machine continuously if the account has a payment method on file
+(their trial caps runtime at 5 minutes). Everything below still describes
+the correct setup — add a card at https://fly.io/dashboard and
+`flyctl deploy` again to bring it back up. It has the advantage of a real
+persistent volume (see below), which the current live Render deployment
+(§12) does not have.
 
 - **URL**: https://slovakia-visa-alert.fly.dev
 - **Region**: `sin` (Singapore — closest available region to India with
@@ -213,7 +219,36 @@ flyctl deploy
 Then update `apps/web/public/config.js`'s `MONITOR_API_BASE` to your new
 app's `https://<name>.fly.dev` URL and redeploy the dashboard.
 
-## 12. VPS deployment (Ubuntu)
+## 12. Render deployment (this project's live instance)
+
+The dashboard at https://karthikbangari.github.io/slovakia-visa-alert/
+currently points here — **no payment method required anywhere**, which is
+why this is live instead of Fly.io.
+
+- **URL**: https://slovakia-visa-alert-5wub.onrender.com
+- **Config**: [`render.yaml`](render.yaml) (a Render "Blueprint") — deployed
+  via Render's dashboard: New → Blueprint → select this repo → Apply.
+  Secrets (`ALERT_EMAIL`, `FRONTEND_URL`, `SMTP_*`/`RESEND_API_KEY`) are
+  marked `sync: false` in the blueprint, so Render prompts for them in its
+  dashboard instead of storing real values in the repo.
+- **Known limitation — no persistent disk**: Render's free tier doesn't
+  support disks. `DATABASE_URL`/`STORAGE_DIR`/`DEBUG_DIR` all live on the
+  container's ephemeral filesystem, so **a restart or redeploy wipes the
+  SQLite history (notification counter resets to 0) and any saved BLS
+  login (`npm run auth:bls` needs re-running after every restart)**. The
+  Fly.io setup (§11) doesn't have this problem — it just needs a card.
+- **Known limitation — sleeps after 15 minutes of no inbound HTTP
+  traffic**, which would silently pause the whole polling loop (the
+  internal 30-second timer doesn't count as "traffic" to Render). A free
+  external uptime pinger (e.g. UptimeRobot or cron-job.org) hitting
+  `/health` every 5–10 minutes keeps it awake — see your monitor's README
+  or set one up at https://uptimerobot.com (free, no card) pointed at
+  `https://slovakia-visa-alert-5wub.onrender.com/health`.
+
+To redeploy after code changes: push to `main` — Render auto-deploys on
+every push to the connected branch by default.
+
+## 13. VPS deployment (Ubuntu)
 
 ### Option A — Docker (recommended)
 
@@ -243,7 +278,7 @@ sudo systemctl enable --now slovakia-visa-alert
 journalctl -u slovakia-visa-alert -f
 ```
 
-## 13. Vercel frontend deployment
+## 14. Vercel frontend deployment
 
 ```bash
 cd apps/web
@@ -255,7 +290,7 @@ static site — no build step required). After deploying, edit
 `apps/web/public/config.js` to point `MONITOR_API_BASE` at your persistent
 backend's public URL, then redeploy.
 
-## 14. Testing
+## 15. Testing
 
 ```bash
 npm run typecheck
@@ -270,7 +305,7 @@ Delhi+D+LongTerm+Study+Available=ALERT" matrix, deduplication, state
 transitions (pause/resume/error-dedup), notification formatting, adaptive
 backoff, and an end-to-end mock-provider integration test.
 
-## 15. Mock slot testing
+## 16. Mock slot testing
 
 Simulate the whole pipeline without touching BLS/VFS:
 
@@ -283,7 +318,7 @@ npm run mock:slot      # SHOULD send a 🚨 CONFIRMED alert for
 Configure email first (`npm run alert:test`) to actually see the message
 land in your inbox.
 
-## 16. Troubleshooting
+## 17. Troubleshooting
 
 ### Session expired
 You'll get a `🔐 SESSION EXPIRED` email. Run `npm run auth:bls` again on the
@@ -307,7 +342,7 @@ Check `npm run alert:test` succeeds first — if email isn't configured, the
 dispatcher silently no-ops (by design, so missing config never crashes the
 monitor).
 
-## 17. Security
+## 18. Security
 
 - `.env`, `storage/` (Playwright session cookies), `data/` (SQLite), and
   `debug/` (screenshots) are all git-ignored — **never commit them.**
@@ -321,7 +356,7 @@ monitor).
   stuffing, or access-control circumvention exists anywhere in this
   codebase, by design.
 
-## 18. Updating
+## 19. Updating
 
 ```bash
 git pull
@@ -331,21 +366,21 @@ docker compose up -d --build   # if using Docker
 # or: sudo systemctl restart slovakia-visa-alert
 ```
 
-## 19. Logs
+## 20. Logs
 
 - Docker: `docker compose logs -f`
 - systemd: `journalctl -u slovakia-visa-alert -f`
 - `DEBUG_MONITOR=true` in `.env` enables verbose navigation/network/timing
   logs (never passwords, cookies, or tokens).
 
-## 20. Backup
+## 21. Backup
 
 Back up `data/visa-alert.db` (history) and `storage/*.json` (auth sessions)
 periodically if you care about historical stats — both are plain files, so
 a simple `rsync`/`scp`/nightly `cp` to another host is enough. Never back
 these up to a public location; `storage/` contains session cookies.
 
-## 21. Selector verification (external-site validation still needed)
+## 22. Selector verification (external-site validation still needed)
 
 ### VFS — important finding, confirmed live on 2026-08-12
 
@@ -403,7 +438,7 @@ Then open the generated report, and edit
 `"verified": true`. Re-run `npm run check:bls` to confirm it now classifies
 NO_SLOT vs SLOT_AVAILABLE correctly against the live site.
 
-## 22. Disclaimer
+## 23. Disclaimer
 
 This tool checks publicly/authentication-gated pages you already have
 legitimate access to, at a conservative, jittered interval, and only ever

@@ -7,8 +7,11 @@ on:
     branches: [main]
   schedule:
     # Fallback-only health ping, NOT the real-time monitor — see the
-    # fallback-health-check job below.
-    - cron: "*/15 * * * *"
+    # fallback-health-check job below. Also doubles as a keep-alive for the
+    # Render free-tier deployment, which sleeps after 15 minutes with no
+    # inbound HTTP traffic; GitHub's cron scheduling isn't exact, so this
+    # runs every 10 minutes rather than cutting it close at 15.
+    - cron: "*/10 * * * *"
 
 jobs:
   build-and-test:
@@ -38,10 +41,11 @@ jobs:
       - name: Build
         run: npm run build
 
-  # Low-frequency fallback health check only — NOT the real-time monitor.
-  # Requirement #4/#28: real-time polling must run on a persistent backend,
-  # never on GitHub Actions cron. This job only pings a deployed instance's
-  # /health endpoint every 15 minutes to catch a fully-down deployment.
+  # Low-frequency fallback health check + Render keep-alive — NOT the
+  # real-time monitor. Requirement #4/#28: real-time polling must run on a
+  # persistent backend, never on GitHub Actions cron. This job pings a
+  # deployed instance's /health endpoint every 10 minutes, both to catch a
+  # fully-down deployment and to keep Render's free tier from sleeping.
   fallback-health-check:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
