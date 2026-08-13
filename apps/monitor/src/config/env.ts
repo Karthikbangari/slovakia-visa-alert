@@ -70,6 +70,11 @@ export const env = {
   resendApiKey: str("RESEND_API_KEY"),
 
   databaseUrl: str("DATABASE_URL", "./data/visa-alert.db"),
+  // Playwright auth-state (storage/) and debug screenshots (debug/) —
+  // overridable so a deployment can point them at a mounted persistent
+  // volume instead of the container's ephemeral filesystem.
+  storageDir: str("STORAGE_DIR", "./storage"),
+  debugDir: str("DEBUG_DIR", "./debug"),
 
   frontendUrl: str("FRONTEND_URL", "http://localhost:3000"),
 

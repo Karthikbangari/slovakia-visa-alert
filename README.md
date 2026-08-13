@@ -19,8 +19,9 @@ bypasses bot protection.** Check → detect → notify → you book manually.
   or after a configurable cooldown.
 - Pauses itself (never guesses, never bypasses) when it hits a CAPTCHA or an
   expired login session, and tells you exactly what to run to fix it.
-- Ships a read-only public dashboard (deployable to Vercel) showing live
-  system status — no secrets, ever.
+- Ships a read-only public dashboard showing how many notifications have
+  been sent — live at https://karthikbangari.github.io/slovakia-visa-alert/
+  — no secrets, ever.
 
 ## 2. Target visa configuration
 
@@ -171,7 +172,48 @@ the official `mcr.microsoft.com/playwright` base image, exposes `:3001`, and
 has a healthcheck against `/health`. `data/`, `storage/`, and `debug/` are
 bind-mounted so your BLS session and history survive rebuilds.
 
-## 11. VPS deployment (Ubuntu)
+## 11. Fly.io deployment (this project's live instance)
+
+The project's actual running instance lives here, deployed via `flyctl`:
+
+- **URL**: https://slovakia-visa-alert.fly.dev
+- **Region**: `sin` (Singapore — closest available region to India with
+  reliable capacity at deploy time)
+- **Config**: [`fly.toml`](fly.toml) — `min_machines_running = 1` and
+  `auto_stop_machines = 'off'` are load-bearing: this is a continuous
+  background poller, not a request-driven web app, so it must never scale
+  to zero the way a typical Fly app does by default.
+- **Persistent volume**: `visa_alert_data`, mounted at `/app/persist`. The
+  database, BLS auth session (`storage/`), and debug screenshots all live
+  there via `DATABASE_URL` / `STORAGE_DIR` / `DEBUG_DIR` env overrides (see
+  `.env.example`) — without this, a redeploy would wipe BLS's login and
+  reset the notification counter, since container filesystems are
+  otherwise ephemeral.
+
+Common commands (flyctl was installed to `~/.fly/bin/flyctl` — add it to
+your `PATH`, or use the full path):
+
+```bash
+flyctl status -a slovakia-visa-alert       # is it running?
+flyctl logs -a slovakia-visa-alert         # tail logs
+flyctl deploy                              # redeploy after code changes
+flyctl secrets set SMTP_HOST=... SMTP_USER=... SMTP_PASSWORD=...
+flyctl ssh console -a slovakia-visa-alert  # shell into the machine
+```
+
+To deploy a fresh instance elsewhere instead of reusing this one:
+
+```bash
+flyctl launch --name <your-app-name> --region sin --yes --dockerfile Dockerfile --internal-port 3001
+flyctl volumes create visa_alert_data --region sin --size 1 --yes
+flyctl secrets set FRONTEND_URL="https://<your-pages-or-vercel-domain>" ALERT_EMAIL="you@example.com"
+flyctl deploy
+```
+
+Then update `apps/web/public/config.js`'s `MONITOR_API_BASE` to your new
+app's `https://<name>.fly.dev` URL and redeploy the dashboard.
+
+## 12. VPS deployment (Ubuntu)
 
 ### Option A — Docker (recommended)
 
@@ -201,7 +243,7 @@ sudo systemctl enable --now slovakia-visa-alert
 journalctl -u slovakia-visa-alert -f
 ```
 
-## 12. Vercel frontend deployment
+## 13. Vercel frontend deployment
 
 ```bash
 cd apps/web
@@ -213,7 +255,7 @@ static site — no build step required). After deploying, edit
 `apps/web/public/config.js` to point `MONITOR_API_BASE` at your persistent
 backend's public URL, then redeploy.
 
-## 13. Testing
+## 14. Testing
 
 ```bash
 npm run typecheck
@@ -228,7 +270,7 @@ Delhi+D+LongTerm+Study+Available=ALERT" matrix, deduplication, state
 transitions (pause/resume/error-dedup), notification formatting, adaptive
 backoff, and an end-to-end mock-provider integration test.
 
-## 14. Mock slot testing
+## 15. Mock slot testing
 
 Simulate the whole pipeline without touching BLS/VFS:
 
@@ -241,7 +283,7 @@ npm run mock:slot      # SHOULD send a 🚨 CONFIRMED alert for
 Configure email first (`npm run alert:test`) to actually see the message
 land in your inbox.
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 ### Session expired
 You'll get a `🔐 SESSION EXPIRED` email. Run `npm run auth:bls` again on the
@@ -265,7 +307,7 @@ Check `npm run alert:test` succeeds first — if email isn't configured, the
 dispatcher silently no-ops (by design, so missing config never crashes the
 monitor).
 
-## 16. Security
+## 17. Security
 
 - `.env`, `storage/` (Playwright session cookies), `data/` (SQLite), and
   `debug/` (screenshots) are all git-ignored — **never commit them.**
@@ -279,7 +321,7 @@ monitor).
   stuffing, or access-control circumvention exists anywhere in this
   codebase, by design.
 
-## 17. Updating
+## 18. Updating
 
 ```bash
 git pull
@@ -289,21 +331,21 @@ docker compose up -d --build   # if using Docker
 # or: sudo systemctl restart slovakia-visa-alert
 ```
 
-## 18. Logs
+## 19. Logs
 
 - Docker: `docker compose logs -f`
 - systemd: `journalctl -u slovakia-visa-alert -f`
 - `DEBUG_MONITOR=true` in `.env` enables verbose navigation/network/timing
   logs (never passwords, cookies, or tokens).
 
-## 19. Backup
+## 20. Backup
 
 Back up `data/visa-alert.db` (history) and `storage/*.json` (auth sessions)
 periodically if you care about historical stats — both are plain files, so
 a simple `rsync`/`scp`/nightly `cp` to another host is enough. Never back
 these up to a public location; `storage/` contains session cookies.
 
-## 20. Selector verification (external-site validation still needed)
+## 21. Selector verification (external-site validation still needed)
 
 ### VFS — important finding, confirmed live on 2026-08-12
 
@@ -361,7 +403,7 @@ Then open the generated report, and edit
 `"verified": true`. Re-run `npm run check:bls` to confirm it now classifies
 NO_SLOT vs SLOT_AVAILABLE correctly against the live site.
 
-## 21. Disclaimer
+## 22. Disclaimer
 
 This tool checks publicly/authentication-gated pages you already have
 legitimate access to, at a conservative, jittered interval, and only ever

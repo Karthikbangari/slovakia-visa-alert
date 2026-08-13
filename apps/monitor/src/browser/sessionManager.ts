@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
 
-const STORAGE_DIR = path.resolve(process.cwd(), "storage");
-const DEBUG_DIR = path.resolve(process.cwd(), "debug");
+const STORAGE_DIR = path.resolve(process.cwd(), env.storageDir);
+const DEBUG_DIR = path.resolve(process.cwd(), env.debugDir);
 
 fs.mkdirSync(STORAGE_DIR, { recursive: true });
 fs.mkdirSync(DEBUG_DIR, { recursive: true });

@@ -1,4 +1,3 @@
-// Public, non-secret configuration only. Set this to wherever your
-// persistent monitor backend's API is reachable (see requirement #15).
-// Example: "https://your-vps-domain.example.com" or "http://localhost:3001"
-window.MONITOR_API_BASE = window.MONITOR_API_BASE || "http://localhost:3001";
+// Public, non-secret configuration only. Points at the persistent monitor
+// backend's API (see requirement #15) — deployed on Fly.io, region sin.
+window.MONITOR_API_BASE = window.MONITOR_API_BASE || "https://slovakia-visa-alert.fly.dev";
