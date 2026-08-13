@@ -27,6 +27,15 @@ export class EmailNotifier implements NotificationProvider {
     return this.useResend || Boolean(env.smtpHost && env.smtpUser);
   }
 
+  /** Explains why `configured` is false, for startup/diagnostic logging. */
+  private explainUnconfigured(): string {
+    if (!env.alertEmail) return "ALERT_EMAIL is not set";
+    if (!this.useResend && !(env.smtpHost && env.smtpUser)) {
+      return "neither RESEND_API_KEY nor SMTP_HOST+SMTP_USER are set";
+    }
+    return "unknown reason";
+  }
+
   private getTransporter(): Transporter {
     if (!this.transporter) {
       this.transporter = nodemailer.createTransport({
@@ -40,7 +49,6 @@ export class EmailNotifier implements NotificationProvider {
   }
 
   async sendSlotAlert(payload: SlotAlertPayload): Promise<boolean> {
-    if (!this.configured) return false;
     return this.sendEmail(
       "🚨 Slovakia D Study Visa Slot Open — Delhi",
       confirmedSlotEmailHtml(payload),
@@ -48,7 +56,6 @@ export class EmailNotifier implements NotificationProvider {
   }
 
   async sendPossibleSlotAlert(payload: SlotAlertPayload): Promise<boolean> {
-    if (!this.configured) return false;
     return this.sendEmail(
       "⚠️ Possible Slovakia D Study Visa Slot — Verify Now",
       `<pre style="white-space:pre-wrap;font-family:sans-serif;">${possibleSlotMessage(payload)}</pre>`,
@@ -56,7 +63,6 @@ export class EmailNotifier implements NotificationProvider {
   }
 
   async sendSlotClosedAlert(payload: SlotAlertPayload): Promise<boolean> {
-    if (!this.configured) return false;
     return this.sendEmail(
       "🔴 Slovakia D Study Visa Slot Closed",
       `<pre style="white-space:pre-wrap;font-family:sans-serif;">${slotClosedMessage(payload)}</pre>`,
@@ -64,11 +70,16 @@ export class EmailNotifier implements NotificationProvider {
   }
 
   async sendSystemAlert(payload: SystemAlertPayload): Promise<boolean> {
-    if (!this.configured) return false;
     return this.sendEmail(`[Slovakia Visa Alert] ${payload.title}`, `<pre style="white-space:pre-wrap;font-family:sans-serif;">${systemAlertMessage(payload)}</pre>`);
   }
 
   private async sendEmail(subject: string, html: string): Promise<boolean> {
+    if (!this.configured) {
+      // eslint-disable-next-line no-console
+      console.warn(`[email] SKIPPED "${subject}" — not configured: ${this.explainUnconfigured()}`);
+      return false;
+    }
+
     try {
       if (this.useResend) {
         const res = await fetch("https://api.resend.com/emails", {
@@ -84,7 +95,15 @@ export class EmailNotifier implements NotificationProvider {
             html,
           }),
         });
-        return res.ok;
+        if (!res.ok) {
+          const body = await res.text().catch(() => "<no body>");
+          // eslint-disable-next-line no-console
+          console.error(`[email] Resend rejected "${subject}" (HTTP ${res.status}) to ${env.alertEmail}: ${body}`);
+          return false;
+        }
+        // eslint-disable-next-line no-console
+        console.log(`[email] sent "${subject}" to ${env.alertEmail} via Resend`);
+        return true;
       }
 
       await this.getTransporter().sendMail({
@@ -93,10 +112,12 @@ export class EmailNotifier implements NotificationProvider {
         subject,
         html,
       });
+      // eslint-disable-next-line no-console
+      console.log(`[email] sent "${subject}" to ${env.alertEmail} via SMTP (${env.smtpHost})`);
       return true;
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error("[email] send error:", err instanceof Error ? err.message : err);
+      console.error(`[email] send error for "${subject}" to ${env.alertEmail}:`, err instanceof Error ? err.message : err);
       return false;
     }
   }
