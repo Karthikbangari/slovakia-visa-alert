@@ -13,6 +13,16 @@ services:
         value: "3001"
       - key: HEADLESS
         value: "true"
+      # BLS is off by default on this deployment: Render's free tier has
+      # no persistent disk, so BLS's saved login is wiped on every
+      # restart, producing repeat "session expired" emails for no real
+      # reason. See README's top-of-file callout and §22 for the full
+      # story — BLS's actual slot calendar is unreachable by automation
+      # either way (CAPTCHA+OTP gate on every booking attempt), so
+      # disabling it here costs nothing functionally. Flip to "true" if
+      # you move to a host with persistent storage (e.g. Fly.io, §11).
+      - key: BLS_ENABLED
+        value: "false"
       - key: CHECK_INTERVAL_SECONDS
         value: "30"
       - key: CHECK_JITTER_PERCENT
