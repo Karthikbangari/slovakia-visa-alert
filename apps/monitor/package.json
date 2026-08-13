@@ -18,6 +18,7 @@
     "check:vfs": "tsx scripts/test-provider.ts vfs",
     "check:all": "tsx scripts/test-provider.ts all",
     "alert:test": "tsx scripts/alert-test.ts",
+    "digest:test": "tsx scripts/digest-test.ts",
     "mock:no-slot": "tsx scripts/mock-run.ts no-slot",
     "mock:slot": "tsx scripts/mock-run.ts slot",
     "diagnostics": "tsx scripts/diagnostics.ts"

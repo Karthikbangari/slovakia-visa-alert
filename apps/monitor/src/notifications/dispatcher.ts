@@ -1,5 +1,5 @@
 import { EmailNotifier } from "./email.js";
-import type { SlotAlertPayload, SystemAlertPayload } from "../types.js";
+import type { SlotAlertPayload, SystemAlertPayload, DigestProviderInfo } from "../types.js";
 import { env } from "../config/env.js";
 import type { VisaAlertDatabase } from "../database/db.js";
 
@@ -46,5 +46,12 @@ export class NotificationDispatcher {
   async dispatchSystemAlert(payload: SystemAlertPayload): Promise<void> {
     await this.email.sendSystemAlert(payload);
     this.db.recordSystemEvent(payload.severity, payload.message);
+  }
+
+  async dispatchDailyDigest(
+    providers: DigestProviderInfo[],
+    target: { region: string; category: string; visaType: string; purpose: string },
+  ): Promise<void> {
+    await this.email.sendDailyDigest(providers, target);
   }
 }

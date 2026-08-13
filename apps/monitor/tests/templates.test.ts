@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { confirmedSlotMessage, possibleSlotMessage, slotClosedMessage } from "../src/notifications/templates.js";
-import type { SlotAlertPayload } from "../src/types.js";
+import { confirmedSlotMessage, dailyDigestMessage, possibleSlotMessage, slotClosedMessage } from "../src/notifications/templates.js";
+import type { DigestProviderInfo, SlotAlertPayload } from "../src/types.js";
 
 const payload: SlotAlertPayload = {
   provider: "BLS",
@@ -46,5 +46,48 @@ describe("notification formatting (requirement #10)", () => {
     const msg = slotClosedMessage(payload);
     expect(msg).toContain("SLOT CLOSED");
     expect(msg).toContain("2026-09-17");
+  });
+});
+
+const target = { region: "Delhi", category: "D", visaType: "Long Term", purpose: "Study" };
+
+describe("dailyDigestMessage — per-provider breakdown", () => {
+  it("only mentions providers that actually have open slots, omitting zero-count ones", () => {
+    const providers: DigestProviderInfo[] = [
+      { provider: "BLS", enabled: true, activeSlotCount: 0, lastStatus: "MANUAL_PROCESS_ONLY", lastCheckedAt: null },
+      { provider: "VFS", enabled: true, activeSlotCount: 3, lastStatus: "SLOT_AVAILABLE", lastCheckedAt: null },
+    ];
+    const msg = dailyDigestMessage(providers, target);
+    expect(msg).toContain("VFS: 3 slot(s)");
+    expect(msg).not.toContain("BLS: 0 slot(s)");
+  });
+
+  it("shows a single summary line when no provider has any open slots", () => {
+    const providers: DigestProviderInfo[] = [
+      { provider: "BLS", enabled: true, activeSlotCount: 0, lastStatus: "MANUAL_PROCESS_ONLY", lastCheckedAt: null },
+      { provider: "VFS", enabled: true, activeSlotCount: 0, lastStatus: "MANUAL_PROCESS_ONLY", lastCheckedAt: null },
+    ];
+    const msg = dailyDigestMessage(providers, target);
+    expect(msg).toContain("No open slots");
+    expect(msg).not.toContain("slot(s)");
+  });
+
+  it("omits disabled providers from the status section", () => {
+    const providers: DigestProviderInfo[] = [
+      { provider: "BLS", enabled: false, activeSlotCount: 0, lastStatus: null, lastCheckedAt: null },
+      { provider: "VFS", enabled: true, activeSlotCount: 0, lastStatus: "MANUAL_PROCESS_ONLY", lastCheckedAt: null },
+    ];
+    const msg = dailyDigestMessage(providers, target);
+    expect(msg).not.toContain("BLS:");
+    expect(msg).toContain("VFS:");
+  });
+
+  it("still includes the target criteria for clarity", () => {
+    const providers: DigestProviderInfo[] = [{ provider: "VFS", enabled: true, activeSlotCount: 0, lastStatus: null, lastCheckedAt: null }];
+    const msg = dailyDigestMessage(providers, target);
+    expect(msg).toContain("Delhi");
+    expect(msg).toContain("D");
+    expect(msg).toContain("Long Term");
+    expect(msg).toContain("Study");
   });
 });

@@ -1,4 +1,49 @@
-import type { SlotAlertPayload, SystemAlertPayload } from "../types.js";
+import type { SlotAlertPayload, SystemAlertPayload, DigestProviderInfo } from "../types.js";
+
+const STATE_LABELS: Record<string, string> = {
+  SLOT_AVAILABLE: "slot available",
+  NO_SLOT: "no slot",
+  POSSIBLE_SLOT: "possible slot — verify",
+  MANUAL_PROCESS_ONLY: "no self-service calendar (manual process only)",
+  SESSION_EXPIRED: "session expired — needs login",
+  HUMAN_ACTION_REQUIRED: "CAPTCHA/verification needed",
+  RATE_LIMITED: "rate-limited, backing off",
+  MAINTENANCE: "site under maintenance",
+  ERROR: "check failed",
+  UNKNOWN: "status unknown",
+};
+
+function stateLabel(state: string | null): string {
+  if (!state) return "not checked yet";
+  return STATE_LABELS[state] ?? state;
+}
+
+export function dailyDigestMessage(providers: DigestProviderInfo[], target: { region: string; category: string; visaType: string; purpose: string }): string {
+  const withSlots = providers.filter((p) => p.enabled && p.activeSlotCount > 0);
+  const enabled = providers.filter((p) => p.enabled);
+
+  const slotLines =
+    withSlots.length > 0
+      ? withSlots.map((p) => `  ${p.provider}: ${p.activeSlotCount} slot(s) currently open`)
+      : ["  No open slots on any monitored provider right now."];
+
+  const statusLines = enabled.map((p) => `  ${p.provider}: ${stateLabel(p.lastStatus)}`);
+
+  return [
+    "📊 DAILY STATUS — Slovakia Visa Alert",
+    "",
+    `${target.region} / ${target.category} / ${target.visaType} / ${target.purpose}`,
+    "",
+    "Slots right now:",
+    ...slotLines,
+    "",
+    "Provider status:",
+    ...statusLines,
+    "",
+    "This is a once-a-day summary. Any actual slot opening still triggers an",
+    "immediate alert the moment it's detected — this digest doesn't replace that.",
+  ].join("\n");
+}
 
 export function confirmedSlotMessage(p: SlotAlertPayload): string {
   return [

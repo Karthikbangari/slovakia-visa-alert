@@ -1,7 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "../config/env.js";
-import type { NotificationProvider, SlotAlertPayload, SystemAlertPayload } from "../types.js";
-import { confirmedSlotEmailHtml, possibleSlotMessage, slotClosedMessage, systemAlertMessage } from "./templates.js";
+import type { NotificationProvider, SlotAlertPayload, SystemAlertPayload, DigestProviderInfo } from "../types.js";
+import { confirmedSlotEmailHtml, dailyDigestMessage, possibleSlotMessage, slotClosedMessage, systemAlertMessage } from "./templates.js";
 
 /**
  * Generic transactional-email interface. Supports either:
@@ -71,6 +71,17 @@ export class EmailNotifier implements NotificationProvider {
 
   async sendSystemAlert(payload: SystemAlertPayload): Promise<boolean> {
     return this.sendEmail(`[Slovakia Visa Alert] ${payload.title}`, `<pre style="white-space:pre-wrap;font-family:sans-serif;">${systemAlertMessage(payload)}</pre>`);
+  }
+
+  async sendDailyDigest(
+    providers: DigestProviderInfo[],
+    target: { region: string; category: string; visaType: string; purpose: string },
+  ): Promise<boolean> {
+    const anySlots = providers.some((p) => p.enabled && p.activeSlotCount > 0);
+    const subject = anySlots
+      ? `📊 Daily Status — Slots open (${providers.filter((p) => p.enabled && p.activeSlotCount > 0).map((p) => p.provider).join(", ")})`
+      : "📊 Daily Status — Slovakia Visa Alert";
+    return this.sendEmail(subject, `<pre style="white-space:pre-wrap;font-family:sans-serif;">${dailyDigestMessage(providers, target)}</pre>`);
   }
 
   private async sendEmail(subject: string, html: string): Promise<boolean> {

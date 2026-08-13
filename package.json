@@ -22,6 +22,7 @@
     "check:vfs": "npm run check:vfs -w apps/monitor",
     "check:all": "npm run check:all -w apps/monitor",
     "alert:test": "npm run alert:test -w apps/monitor",
+    "digest:test": "npm run digest:test -w apps/monitor",
     "mock:no-slot": "npm run mock:no-slot -w apps/monitor",
     "mock:slot": "npm run mock:slot -w apps/monitor",
     "diagnostics": "npm run diagnostics -w apps/monitor"

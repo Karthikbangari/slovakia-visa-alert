@@ -209,6 +209,27 @@ export class VisaAlertDatabase {
     return { totalSent, lastSentAt };
   }
 
+  /**
+   * Per-provider breakdown for the daily digest: how many currently-active
+   * slots each provider has, plus its most recent status. Deliberately
+   * per-provider (not a single combined number) so the digest can report
+   * "VFS found 2, BLS found 0" — or omit a provider entirely when it has
+   * nothing to report, per the digest's own formatting rules.
+   */
+  digestSnapshot(provider: ProviderName): { activeSlotCount: number; lastStatus: string | null; lastCheckedAt: string | null } {
+    const activeSlotCount = (
+      this.db.prepare(`SELECT COUNT(*) as c FROM slots WHERE provider = ? AND active = 1`).get(provider) as { c: number }
+    ).c;
+    const latest = this.db
+      .prepare(`SELECT status, checked_at as checkedAt FROM monitor_checks WHERE provider = ? ORDER BY checked_at DESC LIMIT 1`)
+      .get(provider) as { status: string; checkedAt: string } | undefined;
+    return {
+      activeSlotCount,
+      lastStatus: latest?.status ?? null,
+      lastCheckedAt: latest?.checkedAt ?? null,
+    };
+  }
+
   stats(sinceIso: string): { totalChecks: number; successfulChecks: number; failedChecks: number; slotsDetected: number } {
     const totalChecks = (
       this.db.prepare(`SELECT COUNT(*) as c FROM monitor_checks WHERE checked_at >= ?`).get(sinceIso) as { c: number }

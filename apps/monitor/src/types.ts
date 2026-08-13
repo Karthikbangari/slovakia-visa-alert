@@ -76,6 +76,14 @@ export interface SystemAlertPayload {
   severity: "info" | "warning" | "critical";
 }
 
+export interface DigestProviderInfo {
+  provider: ProviderName;
+  enabled: boolean;
+  activeSlotCount: number;
+  lastStatus: SlotState | null;
+  lastCheckedAt: string | null;
+}
+
 export interface NotificationProvider {
   name: string;
   sendSlotAlert(payload: SlotAlertPayload): Promise<boolean>;
