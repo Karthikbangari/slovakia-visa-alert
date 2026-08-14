@@ -184,15 +184,12 @@ the official `mcr.microsoft.com/playwright` base image, exposes `:3001`, and
 has a healthcheck against `/health`. `data/`, `storage/`, and `debug/` are
 bind-mounted so your BLS session and history survive rebuilds.
 
-## 11. Fly.io deployment (stopped — needs a payment method)
+## 11. Fly.io deployment (this project's live instance)
 
-Fully configured and ready to run, but currently **stopped**: Fly.io only
-runs a machine continuously if the account has a payment method on file
-(their trial caps runtime at 5 minutes). Everything below still describes
-the correct setup — add a card at https://fly.io/dashboard and
-`flyctl deploy` again to bring it back up. It has the advantage of a real
-persistent volume (see below), which the current live Render deployment
-(§12) does not have.
+The dashboard at https://karthikbangari.github.io/slovakia-visa-alert/
+currently points here. Required a payment method on file (Fly.io's free
+trial caps machine runtime at 5 minutes; once a card was added, this runs
+continuously with no time limit).
 
 - **URL**: https://slovakia-visa-alert.fly.dev
 - **Region**: `sin` (Singapore — closest available region to India with
@@ -215,9 +212,38 @@ your `PATH`, or use the full path):
 flyctl status -a slovakia-visa-alert       # is it running?
 flyctl logs -a slovakia-visa-alert         # tail logs
 flyctl deploy                              # redeploy after code changes
-flyctl secrets set SMTP_HOST=... SMTP_USER=... SMTP_PASSWORD=...
+flyctl secrets set RESEND_API_KEY=... SMTP_FROM="..." ALERT_EMAIL=...
 flyctl ssh console -a slovakia-visa-alert  # shell into the machine
 ```
+
+### Uploading a BLS session to the volume
+
+`npm run auth:bls` only ever runs on a machine with a real display (your
+own computer) — there's no way to complete a CAPTCHA/OTP login on a
+headless server. So after logging in locally, upload the resulting file
+to Fly's volume, then restart the machine so the already-running process
+picks it up (it caches the browser context in memory and won't notice a
+new file on disk until it restarts):
+
+```bash
+# if a file already exists at the destination, remove it first — sftp put
+# refuses to overwrite for safety
+flyctl ssh console -a slovakia-visa-alert -C "rm /app/persist/storage/bls-state.json"
+flyctl ssh sftp put apps/monitor/storage/bls-state.json /app/persist/storage/bls-state.json -a slovakia-visa-alert
+flyctl machine restart <machine-id> -a slovakia-visa-alert
+```
+
+One real gotcha hit doing exactly this: BLS rejected a freshly-uploaded
+session within minutes (bounced back to `SESSION_EXPIRED` on the very next
+check). Root cause — `scripts/auth-bls.ts` (the login-time browser) was
+launching with Playwright's default user-agent, while
+`src/browser/sessionManager.ts` (the check-time browser) used a different,
+hardcoded one. Some sites treat a user-agent change mid-session as a
+hijacking signal and force re-login. Both now share the same
+`SHARED_USER_AGENT`/`SHARED_VIEWPORT` constants exported from
+`sessionManager.ts` — after that fix, a session captured in India held up
+fine from Fly's Singapore host, so IP/region mismatch was not actually the
+blocker some might expect it to be.
 
 To deploy a fresh instance elsewhere instead of reusing this one:
 
@@ -231,11 +257,14 @@ flyctl deploy
 Then update `apps/web/public/config.js`'s `MONITOR_API_BASE` to your new
 app's `https://<name>.fly.dev` URL and redeploy the dashboard.
 
-## 12. Render deployment (this project's live instance)
+## 12. Render deployment (alternate — still running, not linked from the dashboard)
 
-The dashboard at https://karthikbangari.github.io/slovakia-visa-alert/
-currently points here — **no payment method required anywhere**, which is
-why this is live instead of Fly.io.
+Kept as a free, card-free fallback. Still deployed and still auto-deploys
+on every push to `main`, but `apps/web/public/config.js` no longer points
+at it — the public dashboard reads from Fly.io (§11) instead, since Fly
+has real persistent storage and Render doesn't (see below). `BLS_ENABLED`
+is set to `false` here (see `render.yaml`) since a restart wipes any saved
+BLS login anyway.
 
 - **URL**: https://slovakia-visa-alert-5wub.onrender.com
 - **Config**: [`render.yaml`](render.yaml) (a Render "Blueprint") — deployed
@@ -245,20 +274,18 @@ why this is live instead of Fly.io.
   dashboard instead of storing real values in the repo.
 - **Known limitation — no persistent disk**: Render's free tier doesn't
   support disks. `DATABASE_URL`/`STORAGE_DIR`/`DEBUG_DIR` all live on the
-  container's ephemeral filesystem, so **a restart or redeploy wipes the
-  SQLite history (notification counter resets to 0) and any saved BLS
-  login (`npm run auth:bls` needs re-running after every restart)**. The
-  Fly.io setup (§11) doesn't have this problem — it just needs a card.
+  container's ephemeral filesystem, so a restart or redeploy wipes the
+  SQLite history and any saved BLS login. The Fly.io setup (§11) doesn't
+  have this problem.
 - **Known limitation — sleeps after 15 minutes of no inbound HTTP
   traffic**, which would silently pause the whole polling loop (the
-  internal 30-second timer doesn't count as "traffic" to Render). A free
-  external uptime pinger (e.g. UptimeRobot or cron-job.org) hitting
-  `/health` every 5–10 minutes keeps it awake — see your monitor's README
-  or set one up at https://uptimerobot.com (free, no card) pointed at
-  `https://slovakia-visa-alert-5wub.onrender.com/health`.
+  internal 30-second timer doesn't count as "traffic" to Render). The
+  GitHub Actions `fallback-health-check` job (`.github/workflows/ci.yml`,
+  every 10 minutes) doubles as a keep-alive ping for this, via the
+  `MONITOR_HEALTH_URL` repo secret.
 
-To redeploy after code changes: push to `main` — Render auto-deploys on
-every push to the connected branch by default.
+To switch the public dashboard back to Render: edit `MONITOR_API_BASE` in
+`apps/web/public/config.js` and push.
 
 ## 13. VPS deployment (Ubuntu)
 
