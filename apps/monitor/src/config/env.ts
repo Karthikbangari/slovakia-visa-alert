@@ -45,10 +45,12 @@ export const env = {
   // Off by default per the user's request: startup/pause/error/recovery/
   // possible-slot emails were flapping roughly every ~30min on Render's
   // free tier (VFS checks intermittently timing out there → ERROR →
-  // recovery on the next successful check). Confirmed slot alerts (and
-  // the once-a-day digest) are never gated by this — only this secondary
-  // "system is doing something" chatter is. Still recorded to the
-  // database/logs either way, just not emailed, unless explicitly enabled.
+  // recovery on the next successful check). A confirmed slot alert is
+  // never gated by this — only this secondary "system is doing something"
+  // chatter is. Still recorded to the database/logs either way, just not
+  // emailed, unless explicitly enabled. (There's also a digest email, but
+  // per the user's request it's manual-only via `npm run digest:test` —
+  // nothing auto-sends it, so it needs no gate here.)
   systemAlertsEnabled: bool("SYSTEM_ALERTS_ENABLED", false),
   browserRestartHours: int("BROWSER_RESTART_HOURS", 6),
   historyRetentionDays: int("HISTORY_RETENTION_DAYS", 30),

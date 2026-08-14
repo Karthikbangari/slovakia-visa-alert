@@ -1,6 +1,6 @@
 import { env } from "../config/env.js";
 import { TARGET } from "../config/target.js";
-import type { AvailabilityResult, DigestProviderInfo, ProviderAdapter, ProviderName } from "../types.js";
+import type { AvailabilityResult, ProviderAdapter, ProviderName } from "../types.js";
 import { VisaAlertDatabase } from "../database/db.js";
 import { NotificationDispatcher } from "../notifications/dispatcher.js";
 import { matchesTarget, deriveConfidence } from "../detectors/validator.js";
@@ -31,7 +31,6 @@ export class MonitorService {
   private latestSnapshot = new Map<ProviderName, ProviderStatusSnapshot>();
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private pruneTimer: NodeJS.Timeout | null = null;
-  private digestTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private providers: ProviderAdapter[],
@@ -77,27 +76,6 @@ export class MonitorService {
       () => this.db.pruneOldData(env.historyRetentionDays),
       6 * 60 * 60 * 1000,
     );
-
-    this.digestTimer = setInterval(() => void this.sendDailyDigest(), 24 * 60 * 60 * 1000);
-  }
-
-  private async sendDailyDigest(): Promise<void> {
-    const providers: DigestProviderInfo[] = this.providers.map((p) => {
-      const snap = this.db.digestSnapshot(p.name);
-      return {
-        provider: p.name,
-        enabled: p.enabled,
-        activeSlotCount: snap.activeSlotCount,
-        lastStatus: (snap.lastStatus as DigestProviderInfo["lastStatus"]) ?? null,
-        lastCheckedAt: snap.lastCheckedAt,
-      };
-    });
-    await this.dispatcher.dispatchDailyDigest(providers, {
-      region: TARGET.region,
-      category: TARGET.category,
-      visaType: TARGET.visaType,
-      purpose: TARGET.purpose,
-    });
   }
 
   async stop(): Promise<void> {
@@ -106,7 +84,6 @@ export class MonitorService {
     this.timers.clear();
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     if (this.pruneTimer) clearInterval(this.pruneTimer);
-    if (this.digestTimer) clearInterval(this.digestTimer);
     for (const provider of this.providers) {
       await provider.dispose?.().catch(() => undefined);
     }

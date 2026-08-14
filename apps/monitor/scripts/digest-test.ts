@@ -5,8 +5,11 @@ import { env } from "../src/config/env.js";
 import type { DigestProviderInfo } from "../src/types.js";
 
 /**
- * Sends a real daily-digest email right now, using whatever is actually in
- * the database — lets you see the format without waiting 24 hours.
+ * Sends a real digest email right now, using whatever is actually in the
+ * database. Manual/on-demand only — the monitor does NOT send this
+ * automatically (per the user's request, the only automatic email is a
+ * confirmed slot alert). Run this yourself whenever you want a status
+ * snapshot in your inbox.
  */
 async function main() {
   const db = new VisaAlertDatabase();
