@@ -70,7 +70,11 @@ export class VFSProvider implements ProviderAdapter {
     const { responses, dispose } = captureAvailabilityResponses(page);
 
     try {
-      const navResponse = await page.goto(env.vfsUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+      // 45s rather than the usual 30s — observed live on Render's free
+      // tier taking 25-27s some checks (slow egress from a resource-
+      // constrained host), which left too little margin against 30s and
+      // caused intermittent spurious ERROR/timeout results.
+      const navResponse = await page.goto(env.vfsUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
       const httpStatus = navResponse?.status();
 
       // VFS's application-detail page is an Angular SPA — confirmed via

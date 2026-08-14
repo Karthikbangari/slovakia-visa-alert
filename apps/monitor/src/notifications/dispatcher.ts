@@ -36,6 +36,7 @@ export class NotificationDispatcher {
   }
 
   async dispatchPossibleSlot(payload: SlotAlertPayload): Promise<void> {
+    if (!env.systemAlertsEnabled) return;
     await this.email.sendPossibleSlotAlert(payload);
   }
 
@@ -44,8 +45,12 @@ export class NotificationDispatcher {
   }
 
   async dispatchSystemAlert(payload: SystemAlertPayload): Promise<void> {
-    await this.email.sendSystemAlert(payload);
+    // Always recorded (dashboard/logs/digest all read this), but only
+    // emailed when SYSTEM_ALERTS_ENABLED=true — see env.ts for why this
+    // defaults to off. Confirmed slot alerts never go through this path.
     this.db.recordSystemEvent(payload.severity, payload.message);
+    if (!env.systemAlertsEnabled) return;
+    await this.email.sendSystemAlert(payload);
   }
 
   async dispatchDailyDigest(

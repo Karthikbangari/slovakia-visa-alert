@@ -42,6 +42,14 @@ export const env = {
   checkIntervalSeconds: checkInterval(),
   checkJitterPercent: Math.min(Math.max(int("CHECK_JITTER_PERCENT", 10), 0), 50),
   alertCooldownMinutes: int("ALERT_COOLDOWN_MINUTES", 10),
+  // Off by default per the user's request: startup/pause/error/recovery/
+  // possible-slot emails were flapping roughly every ~30min on Render's
+  // free tier (VFS checks intermittently timing out there → ERROR →
+  // recovery on the next successful check). Confirmed slot alerts (and
+  // the once-a-day digest) are never gated by this — only this secondary
+  // "system is doing something" chatter is. Still recorded to the
+  // database/logs either way, just not emailed, unless explicitly enabled.
+  systemAlertsEnabled: bool("SYSTEM_ALERTS_ENABLED", false),
   browserRestartHours: int("BROWSER_RESTART_HOURS", 6),
   historyRetentionDays: int("HISTORY_RETENTION_DAYS", 30),
 
