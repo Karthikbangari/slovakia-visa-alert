@@ -109,20 +109,13 @@ export class MonitorService {
     if (!this.running) return;
     const poller = this.pollers.get(provider.name)!;
 
-    if (this.runtime.isPaused(provider.name)) {
-      // Still record a lightweight heartbeat-style status so the dashboard
-      // shows the pause reason, but skip real interaction with the site.
-      this.latestSnapshot.set(provider.name, {
-        status: this.runtime.pauseReason(provider.name) ?? "HUMAN_ACTION_REQUIRED",
-        lastChecked: new Date().toISOString(),
-        responseTimeMs: null,
-        paused: true,
-        pauseReason: this.runtime.pauseReason(provider.name),
-      });
-      this.scheduleNext(provider, 60_000);
-      return;
-    }
-
+    // "Paused" only means alert-dedup (see ProviderRuntimeState) and a
+    // slower cadence for genuine CAPTCHA hits — it does NOT mean stop
+    // checking forever. A provider must keep actually calling
+    // checkAvailability() to ever notice the underlying issue is fixed
+    // (e.g. a freshly-uploaded session file) and self-recover; skipping
+    // the real check entirely would leave it repeating a stale status
+    // indefinitely, requiring a manual process restart to ever clear.
     let result: AvailabilityResult;
     try {
       result = await provider.checkAvailability();

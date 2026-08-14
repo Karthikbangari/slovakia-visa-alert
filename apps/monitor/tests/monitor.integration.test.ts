@@ -137,4 +137,27 @@ describe("MonitorService integration — dedup + state persistence (requirement 
 
     expect(db.lastActiveSlot()).toBeUndefined();
   });
+
+  it("automatically recovers from SESSION_EXPIRED once a healthy result comes back (bug fix: paused providers must keep re-checking)", async () => {
+    db = new VisaAlertDatabase(tmpDbPath());
+    const provider = new MockProvider("BLS", "session-expired");
+    const monitor = new MonitorService([provider], db);
+
+    // @ts-expect-error accessing private for a direct, timer-free check
+    await monitor.handleResult("BLS", await provider.checkAvailability());
+    // @ts-expect-error accessing private runtime state
+    expect(monitor.runtime.isPaused("BLS")).toBe(true);
+
+    // Simulate the underlying issue being fixed (e.g. a fresh session
+    // uploaded) and the provider itself succeeding on its next real check.
+    provider.setScenario("no-slot");
+    // @ts-expect-error accessing private for a direct, timer-free check
+    await monitor.handleResult("BLS", await provider.checkAvailability());
+
+    // @ts-expect-error accessing private runtime state
+    expect(monitor.runtime.isPaused("BLS")).toBe(false);
+    const snapshot = monitor.getSnapshot();
+    expect(snapshot.BLS.status).toBe("NO_SLOT");
+    expect(snapshot.BLS.paused).toBe(false);
+  });
 });

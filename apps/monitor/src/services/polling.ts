@@ -6,23 +6,36 @@ import type { SlotState } from "../types.js";
  *  - normal: configured interval +/- jitter
  *  - transient errors (ERROR, MAINTENANCE): exponential backoff
  *  - RATE_LIMITED (403/429): significantly slower, capped high
- *  - HUMAN_ACTION_REQUIRED / SESSION_EXPIRED: provider pauses entirely
- *    (the monitor loop is responsible for pausing, not this module)
+ *  - HUMAN_ACTION_REQUIRED (a genuine CAPTCHA hit involving real site
+ *    interaction): back off hard too, same reasoning as rate-limited —
+ *    re-hitting a CAPTCHA-flagged page every 30s would be hammering it.
+ *  - SESSION_EXPIRED: deliberately NOT backed off here. Providers check
+ *    for a local session file before ever touching the network, so
+ *    retrying at the normal cadence costs nothing and lets a freshly
+ *    restored session recover automatically on the very next cycle.
  */
 export class AdaptivePoller {
   private consecutiveErrors = 0;
   private consecutiveRateLimits = 0;
+  private consecutiveHumanActionRequired = 0;
 
   recordResult(state: SlotState): void {
     if (state === "ERROR" || state === "MAINTENANCE") {
       this.consecutiveErrors += 1;
       this.consecutiveRateLimits = 0;
+      this.consecutiveHumanActionRequired = 0;
     } else if (state === "RATE_LIMITED") {
       this.consecutiveRateLimits += 1;
       this.consecutiveErrors = 0;
+      this.consecutiveHumanActionRequired = 0;
+    } else if (state === "HUMAN_ACTION_REQUIRED") {
+      this.consecutiveHumanActionRequired += 1;
+      this.consecutiveErrors = 0;
+      this.consecutiveRateLimits = 0;
     } else {
       this.consecutiveErrors = 0;
       this.consecutiveRateLimits = 0;
+      this.consecutiveHumanActionRequired = 0;
     }
   }
 
@@ -33,6 +46,13 @@ export class AdaptivePoller {
     if (this.consecutiveRateLimits > 0) {
       // Rate limiting: back off hard — never race a server telling us to slow down.
       const backedOff = configured * Math.pow(3, Math.min(this.consecutiveRateLimits, 4));
+      return Math.min(backedOff, 30 * 60); // cap at 30 minutes
+    }
+
+    if (this.consecutiveHumanActionRequired > 0) {
+      // Same reasoning as rate-limiting: don't keep re-hitting a page
+      // that's showing a CAPTCHA every 30 seconds.
+      const backedOff = configured * Math.pow(3, Math.min(this.consecutiveHumanActionRequired, 4));
       return Math.min(backedOff, 30 * 60); // cap at 30 minutes
     }
 
@@ -55,11 +75,12 @@ export class AdaptivePoller {
   }
 
   get isBackingOff(): boolean {
-    return this.consecutiveErrors > 0 || this.consecutiveRateLimits > 0;
+    return this.consecutiveErrors > 0 || this.consecutiveRateLimits > 0 || this.consecutiveHumanActionRequired > 0;
   }
 
   reset(): void {
     this.consecutiveErrors = 0;
     this.consecutiveRateLimits = 0;
+    this.consecutiveHumanActionRequired = 0;
   }
 }
