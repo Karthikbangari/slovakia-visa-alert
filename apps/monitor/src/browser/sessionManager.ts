@@ -18,6 +18,18 @@ export function debugScreenshotPath(provider: string): string {
   return path.join(DEBUG_DIR, `${provider}-${ts}.png`);
 }
 
+// Shared across auth-bls.ts (the login-time browser) and this session
+// manager (the check-time browser). Some sites treat a user-agent change
+// mid-session as a hijacking signal and force re-login — confirmed live
+// 2026-08-14: BLS rejected a freshly-captured session within minutes, and
+// auth-bls.ts was launching with Playwright's default UA while checks used
+// this different hardcoded one. Keeping them identical removes that as a
+// variable (a remaining, likely bigger factor is the login and the checks
+// running from different IPs/regions, which this alone cannot fix).
+export const SHARED_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+export const SHARED_VIEWPORT = { width: 1366, height: 900 };
+
 /**
  * Owns one long-lived Chromium instance shared by all providers, per
  * requirement #46 (reuse browser instead of relaunching every poll) and
@@ -60,9 +72,8 @@ export class BrowserSessionManager {
 
     const context = await browser.newContext({
       storageState: hasState ? statePath : undefined,
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-      viewport: { width: 1366, height: 900 },
+      userAgent: SHARED_USER_AGENT,
+      viewport: SHARED_VIEWPORT,
     });
     this.contexts.set(provider, context);
     return context;

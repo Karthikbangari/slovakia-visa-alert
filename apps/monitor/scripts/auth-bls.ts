@@ -2,7 +2,7 @@ import { chromium } from "playwright";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { env } from "../src/config/env.js";
-import { storageStatePath } from "../src/browser/sessionManager.js";
+import { storageStatePath, SHARED_USER_AGENT, SHARED_VIEWPORT } from "../src/browser/sessionManager.js";
 import { detectChallenge } from "../src/providers/common.js";
 
 /**
@@ -17,7 +17,10 @@ async function main() {
   console.log("After successful login, come back here and press Enter.\n");
 
   const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext();
+  // Match the monitor's own check-time browser fingerprint (user-agent,
+  // viewport) so the session we capture here doesn't look like it changed
+  // devices the moment the monitor starts using it.
+  const context = await browser.newContext({ userAgent: SHARED_USER_AGENT, viewport: SHARED_VIEWPORT });
   const page = await context.newPage();
   await page.goto(env.blsUrl, { waitUntil: "domcontentloaded" });
 
